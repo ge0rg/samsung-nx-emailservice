@@ -2,6 +2,7 @@
 
 import os
 import toml
+import email.utils
 from flask import Flask, request, redirect, url_for, make_response
 from xml.etree import ElementTree
 from werkzeug.utils import secure_filename
@@ -21,8 +22,9 @@ def sendmail():
         if 'message' in request.files:
             xml = ElementTree.parse(request.files['message'])
             sender = xml.find('sender').text
-            if not sender in app.config['SENDERS']:
-                print("Sender %s not in whitelist %s" % (sender, app.config['SENDERS']))
+            name, addr = email.utils.parseaddr(sender)
+            if not addr in app.config['SENDERS']:
+                print("Sender %s not in whitelist %s" % (addr, app.config['SENDERS']))
                 return make_response("You are not whitelisted", 401)
             recipients = [e.text for e in xml.find('receiverList').findall('receiver')]
             title = xml.find('title').text
@@ -31,7 +33,7 @@ def sendmail():
             print("To:", ", ".join(recipients))
             print("Subject:", title)
             print(body)
-            store = os.path.join(app.config['UPLOAD_FOLDER'], sender)
+            store = os.path.join(app.config['UPLOAD_FOLDER'], addr)
             os.makedirs(store, exist_ok = True)
             for f in request.files.getlist('binary'):
                 fn = os.path.join(store, secure_filename(f.filename))
