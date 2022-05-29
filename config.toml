@@ -1,0 +1,2 @@
+UPLOAD_FOLDER = "/tmp/"
+SENDERS = ['Camera@samsungcamera.com']
