@@ -2,13 +2,29 @@
 
 import os
 import toml
+import base64
+import hmac
 import email.utils
 from flask import Flask, request, redirect, url_for, make_response
+from flask_autoindex import AutoIndex
 from xml.etree import ElementTree
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.config.from_file("config.toml", load=toml.load)
+
+# auto-index (for "secret" directories)
+idx = AutoIndex(app, browse_root=app.config['UPLOAD_FOLDER'], add_url_rules=False)
+
+def mangle_addr(email, secret=app.config['SECRET']):
+    key = bytes(secret, 'utf-8')
+    sig = hmac.new(key, bytes(email, 'utf-8'), digestmod='sha256')
+    return base64.urlsafe_b64encode(sig.digest()[:15]).decode('ascii')
+
+@app.route('/<path:path>')
+def autoindex(path='.'):
+    return idx.render_autoindex(path, sort_by='name', order=1)
+
 
 @app.route('/')
 def home():
@@ -33,7 +49,8 @@ def sendmail():
             print("To:", ", ".join(recipients))
             print("Subject:", title)
             print(body)
-            store = os.path.join(app.config['UPLOAD_FOLDER'], addr)
+            dirname = mangle_addr(addr)
+            store = os.path.join(app.config['UPLOAD_FOLDER'], dirname)
             os.makedirs(store, exist_ok = True)
             for f in request.files.getlist('binary'):
                 fn = os.path.join(store, secure_filename(f.filename))
