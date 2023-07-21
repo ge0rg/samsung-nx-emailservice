@@ -32,3 +32,21 @@ sudo python3 samsungserver.py
 ```
 192.168.1.23   gld.samsungosp.com www.samsungimaging.com www.ospserver.net
 ```
+
+## NX1/NX500
+
+You can directly write to the root filesystem on DRIMeV cameras:
+
+```
+mount / -o remount,rw
+echo "192.168.0.11 gld.samsungosp.com www.samsungimaging.com www.ospserver.net snsgw.samsungmobile.com" > /etc/hosts
+mount / -o remount,ro
+```
+
+## NX300/NX30/NX2000
+
+The DRIMeIV cameras have a read-only rootfs, so you need to put the hosts file onto the SD card and add to `autoexec.sh`:
+
+```
+mount --bind /mnt/mmc/hosts /etc/hosts
+```
