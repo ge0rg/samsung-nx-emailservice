@@ -50,3 +50,9 @@ The DRIMeIV cameras have a read-only rootfs, so you need to put the hosts file o
 ```
 mount --bind /mnt/mmc/hosts /etc/hosts
 ```
+
+## No support for other camera models
+
+The firmware for other models must be patched to replace the hostname. So far,
+no reverse engineering efforts have been made to understand the logic and to
+be able to change individual parts.
