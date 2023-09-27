@@ -10,6 +10,14 @@ This code is using Flask, but as the Samsung cameras are not fully compliant
 with the HTTP standard, we need to apply a minor fix (`flask.diff` for Python
 3.9, flask 2.1.2).
 
+## Supported models
+
+The following camera models (generations) support sending e-mails:
+
+- NX mini (M7MU): **not working**, fetches http://gld.samsungosp.com/ but falls back to the browser (captive portal)
+- NX30, NX300(M), NX310, NX2000 (DRIMeIV): **working on NX300**, should work on the other models
+- NX500, NX1 (DRIMeV): **working on NX500**, should work equally on NX1
+
 ## Deployment
 
 1. Change the path and email in `config.toml`
@@ -30,7 +38,7 @@ sudo python3 samsungserver.py
 4. On your camera, add the IP of your server to `/etc/hosts`:
 
 ```
-192.168.1.23   gld.samsungosp.com www.samsungimaging.com www.ospserver.net
+192.168.1.23   gld.samsungosp.com www.samsungimaging.com www.ospserver.net snsgw.samsungmobile.com
 ```
 
 ## NX1/NX500
@@ -45,11 +53,27 @@ mount / -o remount,ro
 
 ## NX300/NX30/NX2000
 
-The DRIMeIV cameras have a read-only rootfs, so you need to put the hosts file onto the SD card and add to `autoexec.sh`:
+The DRIMeIV cameras have a read-only rootfs that gets reset on restart. You need to put the `hosts` file onto the SD card and copy it to /etc from `autoexec.sh`:
 
 ```
-mount --bind /mnt/mmc/hosts /etc/hosts
+mount / -o remount,rw
+cp /mnt/mmc/hosts /etc
+mount / -o remount,ro
 ```
+
+## Custom DNS server
+
+You can add the DNS entries to your local / custom DNS server. **It is not
+advised to run a public resolver though!**
+
+You can either add the names to the global `/etc/hosts` file or have a custom
+file like `/etc/hosts.samsungnx` which you need to inform the DNS server about.
+
+### dnsmasq
+
+Add your custom hosts file to dnsmasq as follows:
+
+`dnsmasq ... -addn-hosts=/etc/hosts.samsungnx`
 
 ## No support for other camera models
 
