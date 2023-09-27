@@ -15,6 +15,7 @@ with the HTTP standard, we need to apply a minor fix (`flask.diff` for Python
 The following camera models (generations) support sending e-mails:
 
 - NX mini (M7MU): **not working**, fetches http://gld.samsungosp.com/ but falls back to the browser (captive portal)
+- NX1000 (DRIMeIII): **unknown**
 - NX30, NX300(M), NX310, NX2000 (DRIMeIV): **working on NX300**, should work on the other models
 - NX500, NX1 (DRIMeV): **working on NX500**, should work equally on NX1
 
