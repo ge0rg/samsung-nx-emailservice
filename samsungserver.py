@@ -6,12 +6,19 @@ import base64
 import hmac
 import email.utils
 from flask import Flask, request, redirect, render_template, url_for, make_response
-from flask_autoindex import AutoIndex
 from xml.etree import ElementTree
 from werkzeug.utils import secure_filename
 
+from flask_autoindex import AutoIndex
+
 app = Flask(__name__)
 app.config.from_file("config.toml", load=toml.load)
+idx = AutoIndex(app, browse_root=app.config['UPLOAD_FOLDER'], add_url_rules=False)
+
+def mangle_addr(email, secret=app.config['SECRET']):
+    key = bytes(secret, 'utf-8')
+    sig = hmac.new(key, bytes(email, 'utf-8'), digestmod='sha256')
+    return base64.urlsafe_b64encode(sig.digest()[:15]).decode('ascii')
 
 # auto-index (for "secret" directories)
 idx = AutoIndex(app, browse_root=app.config['UPLOAD_FOLDER'], add_url_rules=False)

@@ -1,3 +1,11 @@
+# where to store uploaded images
 UPLOAD_FOLDER = "/tmp/"
+
+# serve the upload folder via http
+INSECURE_DOWNLOAD = false
+
+# white-list of allowed senders
 SENDERS = ['Camera@samsungcamera.com']
-SECRET = "REPLACE_THIS_WITH_A_PASSPHRASE"
+
+# CHANGE THIS! hmac256 mangle sender addresses into folders with this secret
+SECRET = "xiev5kaMeehaimub"
