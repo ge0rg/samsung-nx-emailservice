@@ -5,7 +5,7 @@ import toml
 import base64
 import hmac
 import email.utils
-from flask import Flask, request, redirect, url_for, make_response
+from flask import Flask, request, redirect, render_template, url_for, make_response
 from flask_autoindex import AutoIndex
 from xml.etree import ElementTree
 from werkzeug.utils import secure_filename
@@ -28,7 +28,7 @@ def autoindex(path='.'):
 
 @app.route('/')
 def home():
-    return "Samsung NX will never die!"
+    return render_template('index.html')
 
 @app.route('/social/columbus/email',methods = ['POST', 'GET'])
 def sendmail():
