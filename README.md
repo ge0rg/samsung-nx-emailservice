@@ -14,10 +14,22 @@ with the HTTP standard, we need to apply a minor fix (`flask.diff` for Python
 
 The following camera models (generations) support sending e-mails:
 
-- NX mini (M7MU): **not working**, fetches http://gld.samsungosp.com/ but falls back to the browser (captive portal)
+- NX mini (M7MU): **working, see below instructions**
 - NX1000 (DRIMeIII): **unknown**
 - NX30, NX300(M), NX310, NX2000 (DRIMeIV): **working on NX300**, should work on the other models
 - NX500, NX1 (DRIMeV): **working on NX500**, should work equally on NX1
+
+**NX mini weirdness**: when you try to send an email _before_ connecting to a
+WiFi network, it will fail or hang. Steps to successfully send an email:
+
+1. Share an image with Flickr or another social network
+2. Enter (fake) credentials
+3. Establish the WiFi connection
+4. On the browser tab showing "Samsung NX will never die!", tap the ⮌ back button
+5. Now you are connected to WiFi and you can send the email. Easy!
+
+This is probably a bug, but somebody needs to reverse-engineer the NX mini
+firmware to see why it fails.
 
 ## Deployment
 
