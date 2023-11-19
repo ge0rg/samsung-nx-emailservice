@@ -5,8 +5,11 @@ import toml
 import base64
 import hmac
 import email.utils
-from flask import Flask, request, redirect, render_template, url_for, make_response
-from xml.etree import ElementTree
+import logging
+import json
+import samsungxml
+from flask import Flask, abort, jsonify, request, redirect, render_template, url_for, make_response
+from xml.etree import ElementTree as ET
 from werkzeug.utils import secure_filename
 
 from flask_autoindex import AutoIndex
@@ -37,13 +40,52 @@ def autoindex(path='.'):
 def home():
     return render_template('index.html')
 
+SITES = [
+        # from NX300 reverse engineering
+        "facebook", "picasa", "youtube", "photobucket",
+        "samsungimaging", "cyworld", "me2day", "poco",
+        "weibo", "renren", "vkontakte", "odnoklassniki",
+        "kakaostory", "evernote", "skydrive",
+        # from NX mini
+        "flickr", "dropbox",
+        ]
+
+OAUTH_SITES = [
+        "skydrive", "flickr", "dropbox",
+        ]
+
+VIDEO_SITES = [
+        "facebook", "youtube",
+        ]
+
+@app.route('/<string:site>/auth',methods = ['POST'])
+def auth(site):
+    if not site in SITES:
+        abort(404)
+    d = request.get_data()
+    xml = ET.fromstring(d)
+    method = xml.attrib["Method"]
+    logging.warning("auth %s for site %s", method, site)
+    if method == 'logout':
+        return "Logged out for real!"
+    if site in OAUTH_SITES:
+        return "OAuth not supported", 401
+    creds = samsungxml.extract_credentials(xml)
+    logging.warning("site %s auth request: %s", site, creds)
+    if not creds['user'] in app.config['SENDERS']:
+        return "Login failed", 401
+    return render_template('response-login.xml',
+            sessionkey=mangle_addr(creds['user']),
+            screenname="Samsung NX Lover"
+        )
+
 @app.route('/social/columbus/email',methods = ['POST', 'GET'])
 def sendmail():
     if request.method == 'POST':
         print('files', request.files)
         print('form', request.form)
         if 'message' in request.files:
-            xml = ElementTree.parse(request.files['message'])
+            xml = ET.parse(request.files['message'])
             sender = xml.find('sender').text
             name, addr = email.utils.parseaddr(sender)
             if not addr in app.config['SENDERS']:

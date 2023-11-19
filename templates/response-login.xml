@@ -1,0 +1,6 @@
+<Response SessionKey="{{ sessionkey }}">
+<PersistKey Value="{{ persistme }}"/>
+<CryptSessionKey Value="{{ csk }}"/>
+<LoginPeopleID="{{ screenname }}"/>
+<OAuth URL="http://snsgw.samsungmobile.com/oauth"/>
+</Response>
