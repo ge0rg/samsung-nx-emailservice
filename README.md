@@ -1,7 +1,8 @@
 # Flask-based Samsung NX Camera Upload Server
 
-This code emulates Samsung's NX email service. It will not send an email but
-merely store the uploaded files in a local folder and print the email details.
+This code emulates Samsung's NX email and social media upload service. It will
+not send an email but merely store the uploaded files in a local folder and
+print the email details.
 
 This can be used to forward the "sent" images to a photo gallery, actually send
 emails or whatever.
@@ -31,9 +32,16 @@ WiFi network, it will fail or hang. Steps to successfully send an email:
 This is probably a bug, but somebody needs to reverse-engineer the NX mini
 firmware to see why it fails.
 
+## Supported sharing services
+
+Tested on NX300, NX mini and NX500:
+- Email
+- Facebook
+- Picasa
+
 ## Deployment
 
-1. Change the path and email in `config.toml`
+1. Change the path, secret and white-listed sender emails in `config.toml`
 
 1. Install the virtual environment, patch flask, and run the (development) server:
 
