@@ -74,8 +74,12 @@ def auth(site):
     logging.warning("site %s auth request: %s", site, creds)
     if not creds['user'] in app.config['SENDERS']:
         return "Login failed", 401
+    # HACK: create mangled folder name as pseudo-session
+    dirname = mangle_addr(creds['user'])
+    store = os.path.join(app.config['UPLOAD_FOLDER'], dirname)
+    os.makedirs(store, exist_ok = True)
     return render_template('response-login.xml',
-            sessionkey=mangle_addr(creds['user']),
+            sessionkey=mangle_addr(dirname),
             screenname="Samsung NX Lover"
         )
 
