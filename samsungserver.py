@@ -83,6 +83,32 @@ def auth(site):
             screenname="Samsung NX Lover"
         )
 
+@app.route('/<string:site>/photo',methods = ['POST'])
+def photo(site):
+    if not site in SITES:
+        abort(404)
+    d = request.get_data()
+    xml = ET.fromstring(d)
+    photo = samsungxml.extract_photo(xml)
+    logging.warning("site %s photo request: %s", site, photo)
+    store = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(photo['sessionkey']))
+    if len(photo['sessionkey']) != 20 or not os.path.isdir(store):
+        abort(401)
+    return render_template('response-upload.xml', **photo)
+
+@app.route('/<string:site>/video',methods = ['POST'])
+def video(site):
+    if not site in VIDEO_SITES:
+        abort(404)
+    d = request.get_data()
+    xml = ET.fromstring(d)
+    photo = samsungxml.extract_video(xml)
+    logging.warning("site %s video request: %s", site, photo)
+    store = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(photo['sessionkey']))
+    if len(photo['sessionkey']) != 20 or not os.path.isdir(store):
+        abort(401)
+    return render_template('response-upload.xml', **photo)
+
 @app.route('/social/columbus/email',methods = ['POST', 'GET'])
 def sendmail():
     if request.method == 'POST':
