@@ -109,6 +109,19 @@ def video(site):
         abort(401)
     return render_template('response-upload.xml', **photo)
 
+@app.route('/upload/<string:sessionkey>/<string:filename>', methods = ['PUT'])
+def upload(sessionkey, filename):
+    d = request.get_data()
+    logging.warning('request from %s, %s length: %d', sessionkey, filename, len(d))
+    store = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(sessionkey))
+    if len(sessionkey) != 20 or not os.path.isdir(store):
+        abort(401)
+    fn = os.path.join(store, secure_filename(filename))
+    logger.warning("Saving %s" % fn)
+    with open(fn, "wb") as f:
+        f.write(d)
+    return "Success!"
+
 @app.route('/social/columbus/email',methods = ['POST', 'GET'])
 def sendmail():
     if request.method == 'POST':
