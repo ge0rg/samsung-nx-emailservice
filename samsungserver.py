@@ -38,7 +38,7 @@ def autoindex(path='.'):
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return render_template('index.html', useragent=request.user_agent)
 
 SITES = [
         # from NX300 reverse engineering
