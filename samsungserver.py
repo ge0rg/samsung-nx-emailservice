@@ -38,6 +38,11 @@ def autoindex(path='.'):
 
 @app.route('/')
 def home():
+    host = (request.headers.get('Host') or "")
+    if host == "www.yahoo.co.kr":
+        resp = make_response("YAHOO!", 200)
+        resp.set_cookie('samsung', 'hotspot', domain='.yahoo.co.kr')
+        return resp
     return render_template('index.html', useragent=request.user_agent)
 
 SITES = [

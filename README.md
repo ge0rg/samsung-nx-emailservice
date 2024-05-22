@@ -60,6 +60,9 @@ sudo python3 samsungserver.py
 
 ```
 192.168.1.23   gld.samsungosp.com www.samsungimaging.com www.ospserver.net snsgw.samsungmobile.com
+# For ST200F and WB850F also add this:
+192.168.1.23   www.yahoo.co.kr
+
 ```
 
 ## NX1/NX500
