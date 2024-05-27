@@ -13,8 +13,13 @@ with the HTTP standard, we need to apply a minor fix (`flask.diff` for Python
 
 ## Supported models
 
-The following camera models (generations) support sending e-mails:
+The following camera models (generations) support sending e-mails (see
+[Samsung WiFi Cameras](https://op-co.de/blog/posts/samsung_wifi_cameras/) for
+details on the compacts):
 
+- ST1000: doesn't work, using unknown API
+- EX2F, ST200F, DV300F: **working**
+- WBxxxF: see [camera table](https://op-co.de/blog/posts/samsung_wifi_cameras/#index2h2)
 - NX mini (M7MU): **working, see below instructions**
 - NX1000 (DRIMeIII): **unknown**
 - NX30, NX300(M), NX310, NX2000 (DRIMeIV): **working on NX300**, should work on the other models
