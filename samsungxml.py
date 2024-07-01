@@ -15,6 +15,14 @@ def extract_credentials(xml):
     x_oauth = xml.find("OAuth")
     x_appkey = xml.find("ApplicationKey")
 
+    # HMX-QF30: TLS encrypted, no credential encryption
+    if not 'Value' in x_csk.attrib:
+        creds = {}
+        creds['user'] = unquote(x_user.attrib['Value'])
+        creds['pw'] = unquote(x_pw.attrib['Value'])
+        creds['applicationkey'] = x_appkey.attrib['Value']
+        return creds
+
     key = b64decode(x_csk.attrib['Value'])
     creds = { 'key': key, 'applicationkey': x_appkey.attrib['Value'] }
 
