@@ -43,6 +43,10 @@ def home():
         resp = make_response("YAHOO!", 200)
         resp.set_cookie('samsung', 'hotspot', domain='.yahoo.co.kr')
         return resp
+    if host == "www.msn.com":
+        resp = make_response("MSN", 200)
+        resp.set_cookie('samsung', 'hotspot', domain='.msn.com')
+        return resp
     return render_template('index.html', useragent=request.user_agent)
 
 SITES = [
