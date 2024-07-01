@@ -20,11 +20,6 @@ from flask_autoindex import AutoIndex
 app = Flask(__name__)
 app.config.from_file("config.toml", load=toml.load)
 
-def mangle_addr(email, secret=app.config['SECRET']):
-    key = bytes(secret, 'utf-8')
-    sig = hmac.new(key, bytes(email, 'utf-8'), digestmod='sha256')
-    return base64.urlsafe_b64encode(sig.digest()[:15]).decode('ascii')
-
 # auto-index (for "secret" directories)
 idx = None
 if app.config['INSECURE_DOWNLOAD']:
