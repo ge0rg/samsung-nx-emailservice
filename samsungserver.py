@@ -7,7 +7,10 @@ import hmac
 import email.utils
 import logging
 import json
+import time
+
 import samsungxml
+
 from flask import Flask, abort, jsonify, request, redirect, render_template, url_for, make_response
 from xml.etree import ElementTree as ET
 from werkzeug.utils import secure_filename
@@ -48,6 +51,16 @@ def home():
         resp.set_cookie('samsung', 'hotspot', domain='.msn.com')
         return resp
     return render_template('index.html', useragent=request.user_agent)
+
+# queried by ST1000
+@app.route('/security/sso/initialize/time')
+def init_time():
+    return f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><initializeResult><currentServerTime>{int(time.time()*1000)}</currentServerTime></initializeResult>'
+
+# queried by ST1000, response syntax unknown
+@app.route('/social/columbus/serviceproviders/list')
+def serviceproviders_list():
+    return "TODO"
 
 SITES = [
         # from NX300 reverse engineering
