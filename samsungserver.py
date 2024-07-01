@@ -19,7 +19,6 @@ from flask_autoindex import AutoIndex
 
 app = Flask(__name__)
 app.config.from_file("config.toml", load=toml.load)
-idx = AutoIndex(app, browse_root=app.config['UPLOAD_FOLDER'], add_url_rules=False)
 
 def mangle_addr(email, secret=app.config['SECRET']):
     key = bytes(secret, 'utf-8')
@@ -27,7 +26,9 @@ def mangle_addr(email, secret=app.config['SECRET']):
     return base64.urlsafe_b64encode(sig.digest()[:15]).decode('ascii')
 
 # auto-index (for "secret" directories)
-idx = AutoIndex(app, browse_root=app.config['UPLOAD_FOLDER'], add_url_rules=False)
+idx = None
+if app.config['INSECURE_DOWNLOAD']:
+    idx = AutoIndex(app, browse_root=app.config['UPLOAD_FOLDER'], add_url_rules=False)
 
 def mangle_addr(email, secret=app.config['SECRET']):
     key = bytes(secret, 'utf-8')
@@ -36,7 +37,9 @@ def mangle_addr(email, secret=app.config['SECRET']):
 
 @app.route('/<path:path>')
 def autoindex(path='.'):
-    return idx.render_autoindex(path, sort_by='name', order=1)
+    if idx:
+        return idx.render_autoindex(path, sort_by='name', order=1)
+    abort(404)
 
 
 @app.route('/')
