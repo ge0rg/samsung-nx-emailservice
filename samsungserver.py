@@ -18,10 +18,14 @@ from flask_autoindex import AutoIndex
 
 from flask_mail import Mail, Message
 
+from mastodon import Mastodon
+
 app = Flask(__name__)
 app.config.from_file("config.toml", load=toml.load)
 
 mail = Mail(app)
+
+mastodon = Mastodon(access_token=app.config['MASTODON_TOKEN'], api_base_url=app.config['MASTODON_BASE_URL'])
 
 # auto-index (for "secret" directories)
 idx = None
@@ -41,6 +45,22 @@ def email_store_files(addr, recipient, files):
         fn = os.path.join(store, secure_filename(f.filename))
         app.logger.info("Saving %s", fn)
         f.save(fn)
+
+def email_mastodon_post(body, files):
+    media_ids = []
+    body_alt = body.split('~')
+    images = files.getlist('binary')
+    if len(body_alt) != 1 + len(images):
+        app.logger.warning('Body does not have enough alt text for %d images: %s', len(images), body)
+        abort(400, 'No alt-text')
+    body = body_alt.pop(0) + app.config['MASTODON_POSTSCRIPT']
+    for f in images:
+        f_meta = mastodon.media_post(f.read(), f.mimetype, description=body_alt.pop(0))
+        media_ids.append(f_meta['id'])
+        app.logger.debug("Posted image: %s", f_meta)
+    app.logger.debug("Image IDs: %s", ', '.join([str(i) for i in media_ids]))
+    meta = mastodon.status_post(body, media_ids=media_ids, visibility=app.config['MASTODON_VISIBILITY'])
+    app.logger.debug("Posted status: %s", meta)
 
 
 @app.route('/<path:path>')
@@ -183,6 +203,9 @@ def sendmail():
                 app.logger.info("Recipient %s policy is %s!", r, policy)
                 if policy == 'store':
                     email_store_files(addr, r, request.files)
+                    recipients.remove(r)
+                elif policy == 'mastodon':
+                    email_mastodon_post(body, request.files)
                     recipients.remove(r)
             if not recipients:
                 app.logger.info("No email recipients left!")

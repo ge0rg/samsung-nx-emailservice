@@ -1,4 +1,5 @@
 cryptography
 flask
 flask-mail
+Mastodon.py
 toml

@@ -17,3 +17,13 @@ MAIL_USERNAME = 'username'
 MAIL_PASSWORD = 'password'
 MAIL_USE_TLS = true
 
+# Mastodon configuration
+MASTODON_BASE_URL = 'https://mastodon.social/'
+MASTODON_TOKEN = 'YOUR_ACCESS_TOKEN'
+MASTODON_POSTSCRIPT = ' #photography #SamsungNX'
+MASTODON_VISIBILITY = 'unlisted' # 'direct', 'private', 'unlisted', 'public'
+
+# Override email addresses / social media
+[ACTIONS]
+"example@mastodon.social" = "mastodon"
+
