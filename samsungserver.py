@@ -157,7 +157,7 @@ def upload(sessionkey, filename):
     app.logger.info("Saving %s" % fn)
     with open(fn, "wb") as f:
         f.write(d)
-    return "Success!"
+    return render_template('response-status.xml', status='succ')
 
 @app.route('/social/columbus/email',methods = ['POST', 'GET'])
 def sendmail():
