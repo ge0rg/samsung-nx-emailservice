@@ -48,6 +48,8 @@ Tested on NX300, NX mini and NX500:
 
 1. Change the path, secret and white-listed sender emails in `config.toml`
 
+1. Add your email server credentials to `config.toml`
+
 1. Install the virtual environment, patch flask, and run the (development) server:
 
 ```
