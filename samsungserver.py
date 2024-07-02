@@ -33,7 +33,7 @@ def mangle_addr(email, secret=app.config['SECRET']):
     sig = hmac.new(key, bytes(email, 'utf-8'), digestmod='sha256')
     return base64.urlsafe_b64encode(sig.digest()[:15]).decode('ascii')
 
-def store_email_files(addr, recipient, files):
+def email_store_files(addr, recipient, files):
     dirname = mangle_addr(addr)
     store = os.path.join(app.config['UPLOAD_FOLDER'], dirname)
     os.makedirs(store, exist_ok = True)
@@ -182,7 +182,7 @@ def sendmail():
                 policy = app.config['ACTIONS'].get(r, 'mail')
                 app.logger.info("Recipient %s policy is %s!", r, policy)
                 if policy == 'store':
-                    store_email_files(addr, r, request.files)
+                    email_store_files(addr, r, request.files)
                     recipients.remove(r)
             if not recipients:
                 app.logger.info("No email recipients left!")
