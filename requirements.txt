@@ -1,3 +1,4 @@
 cryptography
 flask
+flask-mail
 toml

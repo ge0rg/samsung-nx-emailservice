@@ -17,8 +17,12 @@ from werkzeug.utils import secure_filename
 
 from flask_autoindex import AutoIndex
 
+from flask_mail import Mail, Message
+
 app = Flask(__name__)
 app.config.from_file("config.toml", load=toml.load)
+
+mail = Mail(app)
 
 # auto-index (for "secret" directories)
 idx = None
@@ -157,17 +161,18 @@ def sendmail():
             recipients = [e.text for e in xml.find('receiverList').findall('receiver')]
             title = xml.find('title').text
             body = xml.find('body').text.replace("\nlanguage_sh100_utf8", "")
-            print("From:", sender)
-            print("To:", ", ".join(recipients))
-            print("Subject:", title)
-            print(body)
-            dirname = mangle_addr(addr)
-            store = os.path.join(app.config['UPLOAD_FOLDER'], dirname)
-            os.makedirs(store, exist_ok = True)
+            app.logger.debug("From: %s", sender)
+            app.logger.debug("To: %s", ", ".join(recipients))
+            app.logger.debug("Subject: %s", title)
+            app.logger.debug("| %s", body)
+            
+            app.logger.debug("Sending email to %s", ",".join(recipients))
+            msg = Message(subject=title, sender=sender, recipients=recipients)
+            msg.body = body
             for f in request.files.getlist('binary'):
-                fn = os.path.join(store, secure_filename(f.filename))
-                print("Saving %s" % fn)
-                f.save(fn)
+                msg.attach(f.filename, f.mimetype, f.read())
+            # TODO: exception handling
+            mail.send(msg)
         return make_response("Yay", 200)
     else:
         return redirect(url_for('home'))

@@ -9,3 +9,11 @@ SENDERS = ['Camera@samsungcamera.com']
 
 # CHANGE THIS! hmac256 mangle sender addresses into folders with this secret
 SECRET = "xiev5kaMeehaimub"
+
+# Email configuration
+MAIL_SERVER = 'CHANGEME'
+MAIL_PORT = 587
+MAIL_USERNAME = 'username'
+MAIL_PASSWORD = 'password'
+MAIL_USE_TLS = true
+
