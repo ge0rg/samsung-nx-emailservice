@@ -5,7 +5,6 @@ import toml
 import base64
 import hmac
 import email.utils
-import logging
 import json
 import time
 
@@ -99,23 +98,26 @@ def auth(site):
     d = request.get_data()
     xml = ET.fromstring(d)
     method = xml.attrib["Method"]
-    logging.warning("auth %s for site %s", method, site)
+    app.logger.debug("auth %s for site %s", method, site)
     if method == 'logout':
         return "Logged out for real!"
     if site in OAUTH_SITES:
         return "OAuth not supported", 401
     creds = samsungxml.extract_credentials(xml)
-    logging.warning("site %s auth request: %s", site, creds)
+    app.logger.debug("site %s auth request: %s", site, creds)
     if not creds['user'] in app.config['SENDERS']:
         return "Login failed", 401
     # HACK: create mangled folder name as pseudo-session
     dirname = mangle_addr(creds['user'])
+    app.logger.info(f"User {creds['user']} logged in, creating {dirname}...")
     store = os.path.join(app.config['UPLOAD_FOLDER'], dirname)
     os.makedirs(store, exist_ok = True)
     return render_template('response-login.xml',
             sessionkey=mangle_addr(dirname),
             screenname="Samsung NX Lover"
         )
+    app.logger.debug(t)
+    return t
 
 @app.route('/<string:site>/photo',methods = ['POST'])
 def photo(site):
@@ -124,9 +126,10 @@ def photo(site):
     d = request.get_data()
     xml = ET.fromstring(d)
     photo = samsungxml.extract_photo(xml)
-    logging.warning("site %s photo request: %s", site, photo)
-    store = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(photo['sessionkey']))
-    if len(photo['sessionkey']) != 20 or not os.path.isdir(store):
+    app.logger.debug("site %s photo request: %s", site, photo)
+    dirname = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(photo['sessionkey']))
+    app.logger.info(f"Upload {photo['filename']} into {dirname}...")
+    if len(photo['sessionkey']) != 20 or not os.path.isdir(dirname):
         abort(401)
     return render_template('response-upload.xml', **photo)
 
@@ -137,7 +140,7 @@ def video(site):
     d = request.get_data()
     xml = ET.fromstring(d)
     photo = samsungxml.extract_video(xml)
-    logging.warning("site %s video request: %s", site, photo)
+    app.logger.debug("site %s video request: %s", site, photo)
     store = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(photo['sessionkey']))
     if len(photo['sessionkey']) != 20 or not os.path.isdir(store):
         abort(401)
@@ -146,12 +149,12 @@ def video(site):
 @app.route('/upload/<string:sessionkey>/<string:filename>', methods = ['PUT'])
 def upload(sessionkey, filename):
     d = request.get_data()
-    logging.warning('request from %s, %s length: %d', sessionkey, filename, len(d))
+    app.logger.debug('request from %s, %s length: %d', sessionkey, filename, len(d))
     store = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(sessionkey))
     if len(sessionkey) != 20 or not os.path.isdir(store):
         abort(401)
     fn = os.path.join(store, secure_filename(filename))
-    logger.warning("Saving %s" % fn)
+    app.logger.info("Saving %s" % fn)
     with open(fn, "wb") as f:
         f.write(d)
     return "Success!"
@@ -159,14 +162,14 @@ def upload(sessionkey, filename):
 @app.route('/social/columbus/email',methods = ['POST', 'GET'])
 def sendmail():
     if request.method == 'POST':
-        print('files', request.files)
-        print('form', request.form)
+        app.logger.debug('files: %s', request.files)
+        app.logger.debug('form: %s', request.form)
         if 'message' in request.files:
             xml = ET.parse(request.files['message'])
             sender = xml.find('sender').text
             name, addr = email.utils.parseaddr(sender)
             if not addr in app.config['SENDERS']:
-                print("Sender %s not in whitelist %s" % (addr, app.config['SENDERS']))
+                app.logger.warning("Sender %s not in whitelist %s" % (addr, app.config['SENDERS']))
                 return make_response("You are not whitelisted", 401)
             recipients = [e.text for e in xml.find('receiverList').findall('receiver')]
             title = xml.find('title').text
