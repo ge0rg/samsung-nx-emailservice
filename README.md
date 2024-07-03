@@ -75,6 +75,16 @@ _action_ can be defined:
 
 See below for the action values.
 
+### Mastodon
+
+Go to Settings / Developer on your Mastodon instance, and create a new
+application. You only need to allow `write:statuses` and `write:media`.
+
+Please call it "samsung-nx-emailservice" and link to this repositroy.
+
+Once created, you can copy "your access token" into the `MASTODON_TOKEN`
+variable.
+
 ### `email` Action
 
 An email will be sent via the smarthost, using the camera-supplied From
