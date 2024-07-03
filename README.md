@@ -9,8 +9,14 @@ You can:
  - store to a directory on the server
 
 This code is using Flask, but as the Samsung cameras are not fully compliant
-with the HTTP standard, we need to apply a minor fix (`flask.diff` for Python
-3.9, flask 2.1.2).
+with the HTTP standard, we need to apply a minor fix.
+
+For flask 2.x.x, `flask-2.diff` will "fix" the case-insensitive fileName field
+for email upload and accept the missing multi-part end boundary.
+
+For flask 3.x.x, `flask-3.diff` will also accept the missing multi-part end
+boundary and additionally remove the dot stripping and IDNA conversion on
+cookie domains.
 
 ## Supported models
 
@@ -147,7 +153,7 @@ facebook = "mastodon"
 python3 -m venv venv
 source ./venv/bin/activate
 pip3 install -r requirements.txt
-patch -p1 < flask.diff
+patch -p1 < flask-3.diff # for flask 3.x.x
 sudo python3 samsungserver.py
 ```
 

@@ -6,7 +6,7 @@ diff -uNr a/venv/lib/python3.8/site-packages/werkzeug/http.py b/venv/lib/python3
  
      if domain:
 -        domain = domain.partition(":")[0].lstrip(".").encode("idna").decode("ascii")
-+        domain = domain.partition(":")[0].encode("idna").decode("ascii")
++        domain = domain.partition(":")[0]
  
      if isinstance(max_age, timedelta):
          max_age = int(max_age.total_seconds())
