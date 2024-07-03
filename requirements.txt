@@ -1,5 +1,6 @@
 cryptography
 flask
 flask-mail
+Flask-AutoIndex
 Mastodon.py
 toml
