@@ -1,11 +1,12 @@
 # Flask-based Samsung NX Camera Upload Server
 
-This code emulates Samsung's NX email and social media upload service. It will
-not send an email but merely store the uploaded files in a local folder and
-print the email details.
+This code emulates Samsung's NX email and social media upload service.
 
-This can be used to forward the "sent" images to a photo gallery, actually send
-emails or whatever.
+You can:
+
+ - send emails
+ - post to mastodon
+ - store to a directory on the server
 
 This code is using Flask, but as the Samsung cameras are not fully compliant
 with the HTTP standard, we need to apply a minor fix (`flask.diff` for Python
@@ -13,7 +14,8 @@ with the HTTP standard, we need to apply a minor fix (`flask.diff` for Python
 
 ## Supported models
 
-The following camera models (generations) support sending e-mails (see
+The following camera models (generations) support sending e-mails or uploading
+files (see
 [Samsung WiFi Cameras](https://op-co.de/blog/posts/samsung_wifi_cameras/) for
 details on the compacts):
 
@@ -44,9 +46,88 @@ Tested on NX300, NX mini and NX500:
 - Facebook
 - Picasa
 
-## Deployment
+## Configuration
 
-1. Change the path, secret and white-listed sender emails in `config.toml`
+### Email
+
+To send emails, you need to configure an SMTP (smarthost) account in
+`config.toml`. All photos sent from the camera's "Send email" function will be
+sent accordingly, unless you define a different _action_ for an address.
+
+The _action_ method is meant for cameras that only support email uploads and
+none of the other social networks, like the NX500. For email addresses, the
+supported _actions_ are:
+
+- `email` (default)
+- `store`
+- `mastodon`
+
+See below for the action values.
+
+### Social Media
+
+Photos and videos sent via any of the supported emulated social media services
+will be stored under a subdirectory of the `UPLOAD_FOLDER`. A different
+_action_ can be defined:
+
+- `store` (default)
+- `mastodon`
+
+See below for the action values.
+
+### `email` Action
+
+An email will be sent via the smarthost, using the camera-supplied From
+address, To address, Subject, and message body.
+
+### `store` Action
+
+All uploaded files will be stored under a subdirectory of the `UPLOAD_FOLDER`.
+The subdirectory will be the HMAC-SHA256 hash of the username, protected by
+`SECRET` to prevent guessing.
+
+The respective directory can be monitored using inotify to implement further
+processing (`inotifywait -q -e close_write -r $UPLOAD_FOLDER`).
+
+### `mastodon` Action
+
+Files uploaded using this action will be converted into a Mastodon post.
+
+You **must** define alt-text for **all** images and videos. For social media,
+this is technically required because the camera does not tell in advance how
+many files are to be expected. For emails, this is used to help visually
+impaired people. Alt-text must follow the body, separated using the tilde
+character.
+
+For example, the message body "Holiday shot!~fancy flower bed~traffic sign"
+must be accompanied by two photos, and will be posted as follows:
+
+> Holiday shot!
+> 
+> 📷️ *<camera model if supplied by camera>*
+>
+> *<content of config variable MASTODON_POSTSCRIPT>*
+
+Image 1: fancy flower bed
+
+Image 2: traffic sign
+
+### Action example
+
+To redirect all photos uploaded to "Facebook" or sent via email to
+"example@mastodon.social" to Mastodon, and to only store photos sent to
+"store@example.com", you need to define the following three actions:
+
+```toml
+[ACTIONS]
+facebook = "mastodon"
+"example@mastodon.social" = "mastodon"
+"store@example.com" = "store"
+```
+
+## Installation
+
+1. Change the path, secret and email / mastodon settings in `config.toml`
 
 1. Add your email server credentials to `config.toml`
 
