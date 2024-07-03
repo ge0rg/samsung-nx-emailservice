@@ -1,0 +1,25 @@
+diff -uNr a/venv/lib/python3.8/site-packages/werkzeug/http.py b/venv/lib/python3.8/site-packages/werkzeug/http.py
+--- a/venv/lib/python3.8/site-packages/werkzeug/http.py	2024-07-03 15:51:36.032723754 +0000
++++ b/venv/lib/python3.8/site-packages/werkzeug/http.py	2024-07-03 15:42:32.829047441 +0000
+@@ -1279,7 +1279,7 @@
+         path = quote(path, safe="%!$&'()*+,/:=@")
+ 
+     if domain:
+-        domain = domain.partition(":")[0].lstrip(".").encode("idna").decode("ascii")
++        domain = domain.partition(":")[0].encode("idna").decode("ascii")
+ 
+     if isinstance(max_age, timedelta):
+         max_age = int(max_age.total_seconds())
+diff -uNr a/venv/lib/python3.8/site-packages/werkzeug/sansio/multipart.py b/venv/lib/python3.8/site-packages/werkzeug/sansio/multipart.py
+--- a/venv/lib/python3.8/site-packages/werkzeug/sansio/multipart.py     2022-05-29 20:55:08.269740995 +0200
++++ b/venv/lib/python3.8/site-packages/werkzeug/sansio/multipart.py     2022-05-29 20:04:49.445095759 +0200
+@@ -226,7 +226,8 @@
+             self.state = State.COMPLETE
+ 
+         if self.complete and isinstance(event, NeedData):
+-            raise ValueError(f"Invalid form-data cannot parse beyond {self.state}")
++            print("fail fail fail", self.state)
++            #raise ValueError(f"Invalid form-data cannot parse beyond {self.state}")
+ 
+         return event
+ 
