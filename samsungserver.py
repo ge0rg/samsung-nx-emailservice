@@ -5,9 +5,9 @@ import toml
 import base64
 import hmac
 import email.utils
-import json
 import time
 
+from mysession import MySession
 import samsungxml
 
 from flask import Flask, abort, jsonify, request, redirect, render_template, url_for, make_response
@@ -15,13 +15,14 @@ from xml.etree import ElementTree as ET
 from werkzeug.utils import secure_filename
 
 from flask_autoindex import AutoIndex
-
 from flask_mail import Mail, Message
 
 from mastodon import Mastodon
 
 app = Flask(__name__)
 app.config.from_file("config.toml", load=toml.load)
+
+mysession = MySession(app)
 
 mail = Mail(app)
 
@@ -61,6 +62,35 @@ def email_mastodon_post(body, files):
     app.logger.debug("Image IDs: %s", ', '.join([str(i) for i in media_ids]))
     meta = mastodon.status_post(body, media_ids=media_ids, visibility=app.config['MASTODON_VISIBILITY'])
     app.logger.debug("Posted status: %s", meta)
+
+def social_store_file(session, data, filename):
+    store = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(session.dir))
+    if not os.path.isdir(store):
+        abort(401, "No upload folder")
+    fn = os.path.join(store, secure_filename(filename))
+    app.logger.info("Saving %s" % fn)
+    with open(fn, "wb") as f:
+        f.write(d)
+
+def social_mastodon_post(session, data, content_type):
+    if not 'media' in session:
+        session.media = []
+    body = session.content
+    body_alt = body.split('~')
+    body = body_alt.pop(0) + '\n\n📷️ ' + session.album + '\n\n' + app.config['MASTODON_POSTSCRIPT']
+
+    # get N'th alt-text for N'th image upload
+    f_meta = mastodon.media_post(data, content_type, description=body_alt[len(session.media)])
+    app.logger.debug("Posted image: %s", f_meta)
+    session.media.append(f_meta['id'])
+
+    app.logger.debug("Image IDs: %s", ', '.join([str(i) for i in session.media]))
+    app.logger.debug(body_alt)
+    if len(body_alt) == len(session.media):
+        # all alt-text elements have been consumed, this was the last photo
+        meta = mastodon.status_post(body, media_ids=session.media, visibility=app.config['MASTODON_VISIBILITY'])
+        app.logger.debug("Posted status: %s", meta)
+    mysession.store(session)
 
 
 @app.route('/<path:path>')
@@ -129,11 +159,16 @@ def auth(site):
         return "Login failed", 401
     # HACK: create mangled folder name as pseudo-session
     dirname = mangle_addr(creds['user'])
-    app.logger.info(f"User {creds['user']} logged in, creating {dirname}...")
+    session = mysession.load(None)
+    session.user = creds['user']
+    session.dir = dirname
+    mysession.store(session)
+    app.logger.info(f"User {creds['user']} logged in, creating {dirname}, session {session.sid}...")
     store = os.path.join(app.config['UPLOAD_FOLDER'], dirname)
     os.makedirs(store, exist_ok = True)
-    return render_template('response-login.xml',
-            sessionkey=mangle_addr(dirname),
+    t= render_template('response-login.xml',
+            sessionkey=session['sid'],
+            csk=session['sid'],
             screenname="Samsung NX Lover"
         )
     app.logger.debug(t)
@@ -146,10 +181,20 @@ def photo(site):
     d = request.get_data()
     xml = ET.fromstring(d)
     photo = samsungxml.extract_photo(xml)
-    app.logger.debug("site %s photo request: %s", site, photo)
-    dirname = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(photo['sessionkey']))
+    sid = photo['sessionkey']
+    session = mysession.load(sid)
+    session.site = site
+    app.logger.debug("Session: %s", session)
+    if not 'user' in session:
+        app.logger.warning("Unknown session key %s: %s", photo['sessionkey'], session['sid'])
+        abort(401, "Session expired")
+    session.update(photo)
+    mysession.store(session)
+    app.logger.debug("site %s photo request: %s from user: %s", site, photo, session['user'])
+    dirname = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(session['dir']))
     app.logger.info(f"Upload {photo['filename']} into {dirname}...")
-    if len(photo['sessionkey']) != 20 or not os.path.isdir(dirname):
+    if not os.path.isdir(dirname):
+        app.logger.warning(f"Upload directory for {session['user']} does not exist: {dirname}")
         abort(401)
     return render_template('response-upload.xml', **photo)
 
@@ -161,8 +206,16 @@ def video(site):
     xml = ET.fromstring(d)
     photo = samsungxml.extract_video(xml)
     app.logger.debug("site %s video request: %s", site, photo)
+    sid = photo['sessionkey']
+    session = mysession.load(sid)
+    session.site = site
+    if not 'user' in session:
+        app.logger.warning("Unknown session key %s: %s", photo['sessionkey'], session['sid'])
+        abort(401, "Session expired")
+    session.update(photo)
+    mysession.store(session)
     store = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(photo['sessionkey']))
-    if len(photo['sessionkey']) != 20 or not os.path.isdir(store):
+    if not os.path.isdir(store):
         abort(401)
     return render_template('response-upload.xml', **photo)
 
@@ -170,13 +223,14 @@ def video(site):
 def upload(sessionkey, filename):
     d = request.get_data()
     app.logger.debug('request from %s, %s length: %d', sessionkey, filename, len(d))
-    store = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(sessionkey))
-    if len(sessionkey) != 20 or not os.path.isdir(store):
-        abort(401)
-    fn = os.path.join(store, secure_filename(filename))
-    app.logger.info("Saving %s" % fn)
-    with open(fn, "wb") as f:
-        f.write(d)
+    session = mysession.load(sessionkey)
+    if not 'user' in session:
+        abort(401, "Session expired")
+    policy = app.config['ACTIONS'].get(session.site, 'store')
+    if policy == 'store':
+        social_store_file(session, d, filename)
+    elif policy == 'mastodon':
+        social_mastodon_post(session, d, request.content_type)
     return render_template('response-status.xml', status='succ')
 
 @app.route('/social/columbus/email',methods = ['POST', 'GET'])

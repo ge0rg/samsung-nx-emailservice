@@ -1,5 +1,6 @@
 # where to store uploaded images
 UPLOAD_FOLDER = "/tmp/"
+SESSION_FOLDER = "/tmp/"
 
 # serve the upload folder via http
 INSECURE_DOWNLOAD = false
