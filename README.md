@@ -99,14 +99,14 @@ many files are to be expected. For emails, this is used to help visually
 impaired people. Alt-text must follow the body, separated using the tilde
 character.
 
-For example, the message body "Holiday shot!~fancy flower bed~traffic sign"
+For example, the message body "Holiday shot!\~fancy flower bed\~traffic sign"
 must be accompanied by two photos, and will be posted as follows:
 
 > Holiday shot!
 > 
-> 📷️ *<camera model if supplied by camera>*
+> 📷️ *\<camera model if supplied by camera>*
 >
-> *<content of config variable MASTODON_POSTSCRIPT>*
+> *\<content of config variable MASTODON_POSTSCRIPT>*
 
 Image 1: fancy flower bed
 
