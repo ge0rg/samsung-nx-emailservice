@@ -54,7 +54,7 @@ def email_mastodon_post(body, files):
     if len(body_alt) != 1 + len(images):
         app.logger.warning('Body does not have enough alt text for %d images: %s', len(images), body)
         abort(400, 'No alt-text')
-    body = body_alt.pop(0) + app.config['MASTODON_POSTSCRIPT']
+    body = body_alt.pop(0) + '\n\n' + app.config['MASTODON_POSTSCRIPT']
     for f in images:
         f_meta = mastodon.media_post(f.read(), f.mimetype, description=body_alt.pop(0))
         media_ids.append(f_meta['id'])
