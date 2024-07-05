@@ -70,7 +70,7 @@ def social_store_file(session, data, filename):
     fn = os.path.join(store, secure_filename(filename))
     app.logger.info("Saving %s" % fn)
     with open(fn, "wb") as f:
-        f.write(d)
+        f.write(data)
 
 def social_mastodon_post(session, data, content_type):
     if not 'media' in session:
