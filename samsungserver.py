@@ -272,6 +272,9 @@ def sendmail():
                 msg.attach(f.filename, f.mimetype, f.read())
             # TODO: exception handling
             mail.send(msg)
+        else:
+            app.logger.warning("No 'message' in POST or unpatched Flask")
+            abort(400, "No 'message' in POST or unpatched Flask")
         return make_response("Yay", 200)
     else:
         return redirect(url_for('home'))
