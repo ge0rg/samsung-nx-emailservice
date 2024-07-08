@@ -36,6 +36,13 @@ def extract_credentials(xml):
 
     return creds
 
+def extract_userAuthRequest(xml):
+    # Example from NX300:
+    # <userAuthRequest><loginID>xxx</loginID><password>eee</password><duid></duid><mobileCountryCode></mobileCountryCode><tncAccepted>Y</tncAccepted></userAuthRequest>
+    loginID = xml.find("loginID").text
+    password = xml.find("password").text
+    return { 'user':loginID, 'pw':password }
+
 def decrypt_file(fn):
     key, user, pw = decrypt_credentials(ET.parse(fn).getroot())
     print('User:', user, 'Password:', pw)

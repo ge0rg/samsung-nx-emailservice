@@ -118,6 +118,19 @@ def home():
 def init_time():
     return f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><initializeResult><currentServerTime>{int(time.time()*1000)}</currentServerTime></initializeResult>'
 
+# NX300 "AllShare" login
+@app.route('/security/sso/userprofiles/authentication/emailid', methods=['POST'])
+def authentication_emailid():
+    d = request.get_data()
+    app.logger.debug("POST payload: %s", d)
+    xml = ET.fromstring(d)
+    creds = samsungxml.extract_userAuthRequest(xml)
+    if not creds['user'] in app.config['SENDERS']:
+        return "Login failed", 401
+    app.logger.warn("Not yet reverse-engineered API endpoint")
+    abort(500, 'Unknown API')
+
+
 # queried by ST1000, response syntax unknown
 @app.route('/social/columbus/serviceproviders/list')
 def serviceproviders_list():
@@ -146,6 +159,8 @@ def auth(site):
     if not site in SITES:
         abort(404)
     d = request.get_data()
+    if not d:
+        abort(400, 'Empty POST payload') # sometimes sent by NX300?!
     xml = ET.fromstring(d)
     method = xml.attrib["Method"]
     app.logger.debug("auth %s for site %s", method, site)
