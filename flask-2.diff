@@ -20,3 +20,14 @@ diff -uNr a/venv/lib/python3.8/site-packages/werkzeug/sansio/multipart.py b/venv
  
          return event
  
+diff -uNr a/venv/lib/python3.8/site-packages/werkzeug/serving.py b/venv/lib/python3.8/site-packages/werkzeug/serving.py
+--- a/venv/lib/python3.8/site-packages/werkzeug/serving.py	2024-07-11 16:07:51.919405460 +0000
++++ b/venv/lib/python3.8/site-packages/werkzeug/serving.py	2024-07-11 16:05:09.706332854 +0000
+@@ -285,6 +285,7 @@
+                     chunk_response = True
+                     self.send_header("Transfer-Encoding", "chunked")
+ 
++                self.connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_CORK, True)
+                 # Always close the connection. This disables HTTP/1.1
+                 # keep-alive connections. They aren't handled well by
+                 # Python's http.server because it doesn't know how to
