@@ -261,9 +261,11 @@ def upload(sessionkey, filename):
 @app.route('/social/columbus/email',methods = ['POST', 'GET'])
 def sendmail():
     if request.method == 'POST':
-        app.logger.debug('files: %s', request.files)
-        app.logger.debug('form: %s', request.form)
+        app.logger.debug('files: %s', request.files.to_dict())
+        app.logger.debug('form: %s', request.form.to_dict())
         if 'message' in request.files:
+            for ua in request.headers.get_all('user-agent'):
+                app.logger.debug("User-Agent: %s", ua)
             xml = ET.parse(request.files['message'])
             sender = xml.find('sender').text
             name, addr = email.utils.parseaddr(sender)
