@@ -209,6 +209,10 @@ def photo(site):
     if not 'user' in session:
         app.logger.warning("Unknown session key %s: %s", photo['sessionkey'], session['sid'])
         abort(401, "Session expired")
+    if 'content' in session and session['content'] != photo['content']:
+        app.logger.warning("Content changed, this is a new upload!")
+        session.media = []
+        session.conent = ""
     session.update(photo)
     mysession.store(session)
     app.logger.debug("site %s photo request: %s from user: %s", site, photo, session['user'])
