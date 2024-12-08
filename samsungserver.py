@@ -286,9 +286,11 @@ def sendmail():
                 elif policy == 'mastodon':
                     email_mastodon_post(body, request.files)
                     recipients.remove(r)
+                elif policy == 'drop':
+                    recipients.remove(r)
             if not recipients:
                 app.logger.info("No email recipients left!")
-                return make_response("Yay", 200)
+                return render_template('response-status.xml', status='succ')
             
             app.logger.debug("Sending email to %s", ",".join(recipients))
             msg = Message(subject=title, sender=sender, recipients=recipients)
@@ -300,7 +302,7 @@ def sendmail():
         else:
             app.logger.warning("No 'message' in POST or unpatched Flask")
             abort(400, "No 'message' in POST or unpatched Flask")
-        return make_response("Yay", 200)
+        return render_template('response-status.xml', status='succ')
     else:
         return redirect(url_for('home'))
 
