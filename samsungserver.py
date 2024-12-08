@@ -38,6 +38,13 @@ def mangle_addr(email, secret=app.config['SECRET']):
     sig = hmac.new(key, bytes(email, 'utf-8'), digestmod='sha256')
     return base64.urlsafe_b64encode(sig.digest()[:15]).decode('ascii')
 
+def mastodon_post_image(content, content_type, description):
+    if content_type == "image/pjpeg":
+        content_type = "image/jpeg"
+    f_meta = mastodon.media_post(content, content_type, description=description)
+    app.logger.debug("Posted image: %s", f_meta)
+    return f_meta['id']
+
 def email_store_files(addr, recipient, files):
     dirname = mangle_addr(addr)
     store = os.path.join(app.config['UPLOAD_FOLDER'], dirname)
@@ -56,9 +63,9 @@ def email_mastodon_post(body, files):
         abort(400, 'No alt-text')
     body = body_alt.pop(0) + '\n\n' + app.config['MASTODON_POSTSCRIPT']
     for f in images:
-        f_meta = mastodon.media_post(f.read(), f.mimetype, description=body_alt.pop(0))
-        media_ids.append(f_meta['id'])
-        app.logger.debug("Posted image: %s", f_meta)
+        image_id = mastodon_post_image(f.read(), f.mimetype, body_alt.pop(0))
+        f.seek(0)
+        media_ids.append(image_id)
     app.logger.debug("Image IDs: %s", ', '.join([str(i) for i in media_ids]))
     meta = mastodon.status_post(body, media_ids=media_ids, visibility=app.config['MASTODON_VISIBILITY'])
     app.logger.debug("Posted status: %s", meta)
@@ -80,9 +87,8 @@ def social_mastodon_post(session, data, content_type):
     body = body_alt.pop(0) + '\n\n📷️ ' + session.album + '\n\n' + app.config['MASTODON_POSTSCRIPT']
 
     # get N'th alt-text for N'th image upload
-    f_meta = mastodon.media_post(data, content_type, description=body_alt[len(session.media)])
-    app.logger.debug("Posted image: %s", f_meta)
-    session.media.append(f_meta['id'])
+    image_id = mastodon_post_image(data, content_type, body_alt[len(session.media)])
+    session.media.append(image_id)
 
     app.logger.debug("Image IDs: %s", ', '.join([str(i) for i in session.media]))
     app.logger.debug(body_alt)
