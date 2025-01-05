@@ -111,17 +111,26 @@ def autoindex(path='.'):
     abort(404)
 
 
+next_redirect = True
+
+def alternate_response(title, redir_to, cookie_domain):
+    global next_redirect
+    if next_redirect:
+        response = redirect(redir_to, 302)
+    else:
+        response = make_response(title, 200)
+        resp.set_cookie('samsung', 'hotspot', domain=cookie_domain)
+    next_redirect = not next_redirect
+    return response
+
 @app.route('/')
 def home():
     host = (request.headers.get('Host') or "")
     if host == "www.yahoo.co.kr":
-        resp = make_response("YAHOO!", 200)
-        resp.set_cookie('samsung', 'hotspot', domain='.yahoo.co.kr')
-        return resp
+        return alternate_response('YAHOO!', 'http://yahoo.com', '.yahoo.co.kr')
     if host == "www.msn.com":
-        resp = make_response("MSN", 200)
-        resp.set_cookie('samsung', 'hotspot', domain='.msn.com')
-        return resp
+        # WB37F doesn't accept a redirect, wants a cookie instead
+        return alternate_response('MSN', 'http://msn.com', '.msn.com')
     return render_template('index.html', useragent=request.user_agent)
 
 # queried by ST1000
