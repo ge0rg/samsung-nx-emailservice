@@ -86,6 +86,11 @@ def social_mastodon_post(session, data, content_type):
     body_alt = body.split('~')
     body = body_alt.pop(0) + '\n\n📷️ ' + session.album + '\n\n' + app.config['MASTODON_POSTSCRIPT']
 
+    if len(body_alt) == 0:
+        abort(400, 'No alt-text')
+    if len(body_alt) <= len(session.media):
+        abort(400, 'Not enough alt-text')
+
     # get N'th alt-text for N'th image upload
     image_id = mastodon_post_image(data, content_type, body_alt[len(session.media)])
     session.media.append(image_id)
