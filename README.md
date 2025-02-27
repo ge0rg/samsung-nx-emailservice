@@ -8,6 +8,11 @@ You can:
  - post to mastodon
  - store to a directory on the server
 
+More information about the project can be found in:
+
+- **Blog post:** [Samsung NX camera to Mastodon bridge](https://op-co.de/blog/posts/samsung_nx_mastodon/)
+- **Talk (video and slides):** [Samsung Camera to Mastodon Bridge](https://fosdem.org/2025/schedule/event/fosdem-2025-5026-samsung-camera-to-mastodon-bridge/)
+
 This code is using Flask, but as the Samsung cameras are not fully compliant
 with the HTTP standard, we need to apply a minor fix.
 
