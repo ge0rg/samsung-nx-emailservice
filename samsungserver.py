@@ -119,7 +119,7 @@ def alternate_response(title, redir_to, cookie_domain):
         response = redirect(redir_to, 302)
     else:
         response = make_response(title, 200)
-        respose.set_cookie('samsung', 'hotspot', domain=cookie_domain)
+        response.set_cookie('samsung', 'hotspot', domain=cookie_domain)
     next_redirect = not next_redirect
     return response
 
