@@ -126,6 +126,11 @@ def alternate_response(title, redir_to, cookie_domain):
 @app.route('/')
 def home():
     host = (request.headers.get('Host') or "")
+    if host == "gld.samsungosp.com":
+        # old response from 2013
+        #return make_response("200 OK\n", 200)
+        # response as expected by NX mini fw 1.10
+        return make_response("", 200, {'ETag': '"deadbeef"', 'Server': 'nginx/notreally'})
     if host == "www.yahoo.co.kr":
         return alternate_response('YAHOO!', 'http://yahoo.com', '.yahoo.co.kr')
     if host == "www.msn.com":
