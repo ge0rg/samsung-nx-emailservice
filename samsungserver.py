@@ -290,7 +290,9 @@ def sendmail():
             name, addr = email.utils.parseaddr(sender)
             if not addr in app.config['SENDERS']:
                 app.logger.warning("Sender %s not in whitelist %s" % (addr, app.config['SENDERS']))
-                return make_response("You are not whitelisted", 401)
+                return render_template('response-error.xml',
+                        errcode=401, errsubcode=0,
+                        comment="Sender not in whitelist"), 401
             recipients = [e.text for e in xml.find('receiverList').findall('receiver')]
             title = xml.find('title').text
             body = xml.find('body').text.replace("\nlanguage_sh100_utf8", "")
@@ -322,7 +324,9 @@ def sendmail():
             mail.send(msg)
         else:
             app.logger.warning("No 'message' in POST or unpatched Flask")
-            abort(400, "No 'message' in POST or unpatched Flask")
+            return render_template('response-error.xml',
+                    errcode=400, errsubcode=0,
+                    comment="No 'message' in POST or unpatched Flask"), 400
         return render_template('response-status.xml', status='succ')
     else:
         return redirect(url_for('home'))

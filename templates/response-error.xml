@@ -1,1 +1,1 @@
-<Response ErrCode="{{ errcode }}" ErrSubCode="{{ errsubcode }}" />
+<Response ErrCode="{{ errcode }}" ErrSubCode="{{ errsubcode }}" /><!-- {{ comment }} -->
