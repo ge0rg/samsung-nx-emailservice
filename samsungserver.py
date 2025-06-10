@@ -73,7 +73,9 @@ def email_mastodon_post(body, files):
 def social_store_file(session, data, filename):
     store = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(session.dir))
     if not os.path.isdir(store):
-        abort(401, "No upload folder")
+        abort(401, render_template('response-error.xml',
+                errcode=401, errsubcode=0,
+                comment="Login failed"))
     fn = os.path.join(store, secure_filename(filename))
     app.logger.info("Saving %s" % fn)
     with open(fn, "wb") as f:
@@ -192,11 +194,15 @@ def auth(site):
     if method == 'logout':
         return "Logged out for real!"
     if site in OAUTH_SITES:
-        return "OAuth not supported", 401
+        return render_template('response-error.xml',
+                errcode=401, errsubcode=0,
+                comment="OAuth not supported"), 401
     creds = samsungxml.extract_credentials(xml)
     app.logger.debug("site %s auth request: %s", site, creds)
     if not creds['user'] in app.config['SENDERS']:
-        return "Login failed", 401
+        return render_template('response-error.xml',
+                errcode=401, errsubcode=0,
+                comment="Login failed"), 401
     # HACK: create mangled folder name as pseudo-session
     dirname = mangle_addr(creds['user'])
     session = mysession.load(None)
@@ -227,7 +233,9 @@ def photo(site):
     app.logger.debug("Session: %s", session)
     if not 'user' in session:
         app.logger.warning("Unknown session key %s: %s", photo['sessionkey'], session['sid'])
-        abort(401, "Session expired")
+        return render_template('response-error.xml',
+                errcode=401, errsubcode=0,
+                comment="Session expired"), 401
     if 'content' in session and session['content'] != photo['content']:
         app.logger.warning("Content changed, this is a new upload!")
         session.media = []
@@ -239,7 +247,9 @@ def photo(site):
     app.logger.info(f"Upload {photo['filename']} into {dirname}...")
     if not os.path.isdir(dirname):
         app.logger.warning(f"Upload directory for {session['user']} does not exist: {dirname}")
-        abort(401)
+        return render_template('response-error.xml',
+                errcode=401, errsubcode=0,
+                comment="Login failed"), 401
     return render_template('response-upload.xml', **photo)
 
 @app.route('/<string:site>/video',methods = ['POST'])
@@ -255,12 +265,16 @@ def video(site):
     session.site = site
     if not 'user' in session:
         app.logger.warning("Unknown session key %s: %s", photo['sessionkey'], session['sid'])
-        abort(401, "Session expired")
+        return render_template('response-error.xml',
+                errcode=401, errsubcode=0,
+                comment="Session expired"), 401
     session.update(photo)
     mysession.store(session)
     store = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(photo['sessionkey']))
     if not os.path.isdir(store):
-        abort(401)
+        return render_template('response-error.xml',
+                errcode=401, errsubcode=0,
+                comment="Login failed"), 401
     return render_template('response-upload.xml', **photo)
 
 @app.route('/upload/<string:sessionkey>/<string:filename>', methods = ['PUT'])
@@ -269,7 +283,9 @@ def upload(sessionkey, filename):
     app.logger.debug('request from %s, %s length: %d', sessionkey, filename, len(d))
     session = mysession.load(sessionkey)
     if not 'user' in session:
-        abort(401, "Session expired")
+        return render_template('response-error.xml',
+                errcode=401, errsubcode=0,
+                comment="Session expired"), 401
     policy = app.config['ACTIONS'].get(session.site, 'store')
     if policy == 'store':
         social_store_file(session, d, filename)
