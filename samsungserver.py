@@ -26,7 +26,10 @@ mysession = MySession(app)
 
 mail = Mail(app)
 
-mastodon = Mastodon(access_token=app.config['MASTODON_TOKEN'], api_base_url=app.config['MASTODON_BASE_URL'])
+mastodon = Mastodon(
+        access_token=app.config['MASTODON_TOKEN'],
+        api_base_url=app.config.get('MASTODON_BASE_URL'),
+        user_agent='samsung-nx-emailservice')
 
 # auto-index (for "secret" directories)
 idx = None
