@@ -20,7 +20,7 @@ from flask_mail import Mail, Message
 from mastodon import Mastodon
 
 app = Flask(__name__)
-app.config.from_file("config.toml", load=toml.load)
+app.config.from_file(os.getenv("CONFIG", "config.toml"), load=toml.load)
 
 mysession = MySession(app)
 
