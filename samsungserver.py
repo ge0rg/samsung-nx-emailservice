@@ -93,12 +93,17 @@ def mastodon_post_image(instance, content, content_type, description):
 
 def email_store_files(instance, addr, recipient, files):
     dirname = mangle_addr(addr)
+    if instance:
+        dirname = instance
     store = os.path.join(app.config['UPLOAD_FOLDER'], dirname)
     os.makedirs(store, exist_ok = True)
+    filenames = []
     for f in files.getlist('binary'):
         fn = os.path.join(store, secure_filename(f.filename))
         app.logger.info("Saving %s", fn)
         f.save(fn)
+        filenames.append(fn)
+    return filenames
 
 def email_mastodon_post(instance, body, files):
     media_ids = []
