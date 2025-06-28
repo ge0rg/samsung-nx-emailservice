@@ -26,10 +26,33 @@ mysession = MySession(app)
 
 mail = Mail(app)
 
-mastodon = Mastodon(
-        access_token=app.config['MASTODON_TOKEN'],
-        api_base_url=app.config.get('MASTODON_BASE_URL'),
+def get_config(action, instance):
+    """get the config dict for a given action ('SHELL', 'MASTODON') and its respective instance, if given. Instances inherit the default action config!"""
+    if instance: # and app.config[module].get(instance):
+        # get defaults and override with specific config
+        conf = app.config[action]
+        conf.update(app.config[action][instance])
+        return conf
+    else:
+        return app.config[action]
+
+MASTODON_INSTANCES = {}
+
+def get_mastodon_instance(instance):
+    app.logger.debug("Requested mastodon instance for %s", instance)
+    if instance in MASTODON_INSTANCES:
+        app.logger.debug("Found %s", MASTODON_INSTANCES[instance].api_base_url)
+        return MASTODON_INSTANCES[instance]
+    conf = get_config('MASTODON', instance)
+    masto = Mastodon(
+        access_token=conf['TOKEN'],
+        api_base_url=conf.get('BASE_URL'),
         user_agent='samsung-nx-emailservice')
+    masto._appconfig = conf
+    MASTODON_INSTANCES[instance] = masto
+    app.logger.debug("Initialized %s", MASTODON_INSTANCES[instance].api_base_url)
+    return masto
+
 
 # auto-index (for "secret" directories)
 idx = None
@@ -49,15 +72,26 @@ def get_action(target, default_action):
     else:
         return (mapping, None)
 
+def update_session_action(session, target=None):
+    if target:
+        session.site = target
+    action, instance = get_action(session.site, 'store')
+    session.instance = instance
+    if instance:
+        session.dir = instance
+    return action, instance
 
-def mastodon_post_image(content, content_type, description):
+
+
+def mastodon_post_image(instance, content, content_type, description):
     if content_type == "image/pjpeg":
         content_type = "image/jpeg"
+    mastodon = get_mastodon_instance(instance)
     f_meta = mastodon.media_post(content, content_type, description=description)
     app.logger.debug("Posted image: %s", f_meta)
     return f_meta['id']
 
-def email_store_files(addr, recipient, files):
+def email_store_files(instance, addr, recipient, files):
     dirname = mangle_addr(addr)
     store = os.path.join(app.config['UPLOAD_FOLDER'], dirname)
     os.makedirs(store, exist_ok = True)
@@ -66,28 +100,26 @@ def email_store_files(addr, recipient, files):
         app.logger.info("Saving %s", fn)
         f.save(fn)
 
-def email_mastodon_post(body, files):
+def email_mastodon_post(instance, body, files):
     media_ids = []
     body_alt = body.split('~')
     images = files.getlist('binary')
     if len(body_alt) != 1 + len(images):
         app.logger.warning('Body does not have enough alt text for %d images: %s', len(images), body)
         abort(400, 'No alt-text')
-    body = body_alt.pop(0) + '\n\n' + app.config['MASTODON_POSTSCRIPT']
+    mastodon = get_mastodon_instance(instance)
+    body = body_alt.pop(0) + '\n\n' + mastodon._appconfig['POSTSCRIPT']
     for f in images:
-        image_id = mastodon_post_image(f.read(), f.mimetype, body_alt.pop(0))
+        image_id = mastodon_post_image(instance, f.read(), f.mimetype, body_alt.pop(0))
         f.seek(0)
         media_ids.append(image_id)
     app.logger.debug("Image IDs: %s", ', '.join([str(i) for i in media_ids]))
-    meta = mastodon.status_post(body, media_ids=media_ids, visibility=app.config['MASTODON_VISIBILITY'])
+    meta = mastodon.status_post(body, media_ids=media_ids, visibility=mastodon._appconfig['VISIBILITY'])
     app.logger.debug("Posted status: %s", meta)
 
 def social_store_file(session, data, filename):
     store = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(session.dir))
-    if not os.path.isdir(store):
-        abort(401, render_template('response-error.xml',
-                errcode=401, errsubcode=0,
-                comment="Login failed"))
+    os.makedirs(store, exist_ok = True)
     fn = os.path.join(store, secure_filename(filename))
     app.logger.info("Saving %s" % fn)
     with open(fn, "wb") as f:
@@ -98,7 +130,8 @@ def social_mastodon_post(session, data, content_type):
         session.media = []
     body = session.content
     body_alt = body.split('~')
-    body = body_alt.pop(0) + '\n\n📷️ ' + session.album + '\n\n' + app.config['MASTODON_POSTSCRIPT']
+    mastodon = get_mastodon_instance(session.instance)
+    body = body_alt.pop(0) + '\n\n📷️ ' + session.album + '\n\n' + mastodon._appconfig['POSTSCRIPT']
 
     if len(body_alt) == 0:
         abort(400, 'No alt-text')
@@ -106,14 +139,14 @@ def social_mastodon_post(session, data, content_type):
         abort(400, 'Not enough alt-text')
 
     # get N'th alt-text for N'th image upload
-    image_id = mastodon_post_image(data, content_type, body_alt[len(session.media)])
+    image_id = mastodon_post_image(session.instance, data, content_type, body_alt[len(session.media)])
     session.media.append(image_id)
 
     app.logger.debug("Image IDs: %s", ', '.join([str(i) for i in session.media]))
     app.logger.debug(body_alt)
     if len(body_alt) == len(session.media):
         # all alt-text elements have been consumed, this was the last photo
-        meta = mastodon.status_post(body, media_ids=session.media, visibility=app.config['MASTODON_VISIBILITY'])
+        meta = mastodon.status_post(body, media_ids=session.media, visibility=mastodon._appconfig['VISIBILITY'])
         app.logger.debug("Posted status: %s", meta)
     mysession.store(session)
 
@@ -218,8 +251,9 @@ def auth(site):
     # HACK: create mangled folder name as pseudo-session
     dirname = mangle_addr(creds['user'])
     session = mysession.load(None)
-    session.user = creds['user']
     session.dir = dirname
+    update_session_action(session, site)
+    session.user = creds['user']
     mysession.store(session)
     app.logger.info(f"User {creds['user']} logged in, creating {dirname}, session {session.sid}...")
     store = os.path.join(app.config['UPLOAD_FOLDER'], dirname)
@@ -241,7 +275,7 @@ def photo(site):
     photo = samsungxml.extract_photo(xml)
     sid = photo['sessionkey']
     session = mysession.load(sid)
-    session.site = site
+    update_session_action(session, site)
     app.logger.debug("Session: %s", session)
     if not 'user' in session:
         app.logger.warning("Unknown session key %s: %s", photo['sessionkey'], session['sid'])
@@ -274,7 +308,7 @@ def video(site):
     app.logger.debug("site %s video request: %s", site, photo)
     sid = photo['sessionkey']
     session = mysession.load(sid)
-    session.site = site
+    update_session_action(session, site)
     if not 'user' in session:
         app.logger.warning("Unknown session key %s: %s", photo['sessionkey'], session['sid'])
         return render_template('response-error.xml',
@@ -298,7 +332,7 @@ def upload(sessionkey, filename):
         return render_template('response-error.xml',
                 errcode=401, errsubcode=0,
                 comment="Session expired"), 401
-    action, instance = get_action(session.site, 'store')
+    action, instance = update_session_action(session)
     app.logger.debug("Upload %s action is %s (instance=%s)!", session.site, action, instance)
     if action == 'store':
         social_store_file(session, d, filename)
@@ -338,7 +372,7 @@ def sendmail():
                     email_store_files(instance, addr, r, request.files)
                     recipients.remove(r)
                 elif action == 'mastodon':
-                    email_mastodon_post(body, request.files)
+                    email_mastodon_post(instance, body, request.files)
                     recipients.remove(r)
                 elif action == 'drop':
                     recipients.remove(r)
