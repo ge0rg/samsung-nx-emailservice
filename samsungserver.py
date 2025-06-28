@@ -5,6 +5,7 @@ import toml
 import base64
 import hmac
 import email.utils
+import subprocess
 import time
 
 from mysession import MySession
@@ -155,6 +156,31 @@ def social_mastodon_post(session, data, content_type):
         app.logger.debug("Posted status: %s", meta)
     mysession.store(session)
 
+def email_shell(instance, addr, recipient, body, subject, files):
+    filenames = email_store_files(instance, addr, recipient, files)
+    conf = get_config('SHELL', instance)
+    for fn in filenames:
+        values = {
+                'filename': fn,
+                'sender': addr,
+                'recipient': recipient,
+                'subject': subject,
+                'body': body,
+                }
+        if 'STDIN' in conf:
+            stdin = conf['STDIN'].format(**values)
+        else:
+            stdin = None
+        cmd = [c.format(**values) for c in conf['CMD']]
+        app.logger.debug("SHELL: %s", ' '.join(cmd))
+        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        outs, errs = proc.communicate(input=stdin)
+        app.logger.debug("STDOUT: %s", outs)
+        app.logger.debug("STDERR: %s", errs)
+
+
+def social_shell():
+    pass
 
 @app.route('/<path:path>')
 def autoindex(path='.'):
@@ -364,16 +390,19 @@ def sendmail():
                         errcode=401, errsubcode=0,
                         comment="Sender not in whitelist"), 401
             recipients = [e.text for e in xml.find('receiverList').findall('receiver')]
-            title = xml.find('title').text
+            subject = xml.find('title').text
             body = xml.find('body').text.replace("\nlanguage_sh100_utf8", "")
             app.logger.debug("From: %s", sender)
             app.logger.debug("To: %s", ", ".join(recipients))
-            app.logger.debug("Subject: %s", title)
+            app.logger.debug("Subject: %s", subject)
             app.logger.debug("| %s", body)
             for r in sorted(recipients):
                 action, instance = get_action(r, 'mail')
                 app.logger.info("Recipient %s action is %s (instance=%s)!", r, action, instance)
-                if action == 'store':
+                if action == 'shell':
+                    email_shell(instance, addr, r, body, subject, request.files)
+                    recipients.remove(r)
+                elif action == 'store':
                     email_store_files(instance, addr, r, request.files)
                     recipients.remove(r)
                 elif action == 'mastodon':
@@ -386,7 +415,7 @@ def sendmail():
                 return render_template('response-status.xml', status='succ')
             
             app.logger.debug("Sending email to %s", ",".join(recipients))
-            msg = Message(subject=title, sender=sender, recipients=recipients)
+            msg = Message(subject=subject, sender=sender, recipients=recipients)
             msg.body = body
             for f in request.files.getlist('binary'):
                 msg.attach(f.filename, f.mimetype, f.read())
