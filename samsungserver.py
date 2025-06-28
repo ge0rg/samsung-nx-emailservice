@@ -41,6 +41,15 @@ def mangle_addr(email, secret=app.config['SECRET']):
     sig = hmac.new(key, bytes(email, 'utf-8'), digestmod='sha256')
     return base64.urlsafe_b64encode(sig.digest()[:15]).decode('ascii')
 
+def get_action(target, default_action):
+    """return the override action from the config or the default action if no override is set"""
+    mapping = app.config['ACTIONS'].get(target, default_action)
+    if '.' in mapping:
+        return mapping.split('.')
+    else:
+        return (mapping, None)
+
+
 def mastodon_post_image(content, content_type, description):
     if content_type == "image/pjpeg":
         content_type = "image/jpeg"
@@ -289,11 +298,14 @@ def upload(sessionkey, filename):
         return render_template('response-error.xml',
                 errcode=401, errsubcode=0,
                 comment="Session expired"), 401
-    policy = app.config['ACTIONS'].get(session.site, 'store')
-    if policy == 'store':
+    action, instance = get_action(session.site, 'store')
+    app.logger.debug("Upload %s action is %s (instance=%s)!", session.site, action, instance)
+    if action == 'store':
         social_store_file(session, d, filename)
-    elif policy == 'mastodon':
+    elif action == 'mastodon':
         social_mastodon_post(session, d, request.content_type)
+    elif action == 'drop':
+        pass
     return render_template('response-status.xml', status='succ')
 
 @app.route('/social/columbus/email',methods = ['POST', 'GET'])
@@ -320,15 +332,15 @@ def sendmail():
             app.logger.debug("Subject: %s", title)
             app.logger.debug("| %s", body)
             for r in sorted(recipients):
-                policy = app.config['ACTIONS'].get(r, 'mail')
-                app.logger.info("Recipient %s policy is %s!", r, policy)
-                if policy == 'store':
-                    email_store_files(addr, r, request.files)
+                action, instance = get_action(r, 'mail')
+                app.logger.info("Recipient %s action is %s (instance=%s)!", r, action, instance)
+                if action == 'store':
+                    email_store_files(instance, addr, r, request.files)
                     recipients.remove(r)
-                elif policy == 'mastodon':
+                elif action == 'mastodon':
                     email_mastodon_post(body, request.files)
                     recipients.remove(r)
-                elif policy == 'drop':
+                elif action == 'drop':
                     recipients.remove(r)
             if not recipients:
                 app.logger.info("No email recipients left!")
