@@ -1,17 +1,17 @@
-# where to store uploaded images
+# where to store uploaded images and session files
 UPLOAD_FOLDER = "/tmp/"
 SESSION_FOLDER = "/tmp/"
 
-# serve the upload folder via http
+# serve the upload folder via http with no authentication
 INSECURE_DOWNLOAD = false
 
-# white-list of allowed senders
+# white-list of allowed senders (email and social accounts)
 SENDERS = ['Camera@samsungcamera.com']
 
 # CHANGE THIS! hmac256 mangle sender addresses into folders with this secret
 SECRET = "xiev5kaMeehaimub"
 
-# Email configuration
+# Email configuration: SMTP smarthost
 MAIL_SERVER = 'CHANGEME'
 MAIL_PORT = 587
 MAIL_USERNAME = 'username'
@@ -19,12 +19,38 @@ MAIL_PASSWORD = 'password'
 MAIL_USE_TLS = true
 
 # Mastodon configuration
-MASTODON_BASE_URL = 'https://mastodon.social/'
-MASTODON_TOKEN = 'YOUR_ACCESS_TOKEN'
-MASTODON_POSTSCRIPT = ' #photography #SamsungNX'
-MASTODON_VISIBILITY = 'unlisted' # 'direct', 'private', 'unlisted', 'public'
+[MASTODON]
+# if `TOKEN` is a file created by mastodonlogin.py, `BASE_URL` is not needed
+#BASE_URL = ''
+TOKEN = 'mastodon.secret'
+POSTSCRIPT = ' #photography #SamsungNX'
+VISIBILITY = 'unlisted' # 'direct', 'private', 'unlisted', 'public'
 
-# Override email addresses / social media
+# example instance config overriding only the visibility
+[MASTODON.pub]
+VISIBILITY = 'public'
+
+# example shell command not using stdin
+[SHELL]
+CMD = [ "./log.sh", "{sender}", "{recipient}", "{filename}" ]
+
+# example shell command extending the default `SHELL` action with stdin
+[SHELL.log]
+STDIN = """From: {sender}
+To: {recipient}
+Subject: {subject}
+
+{filename}
+
+{body}
+."""
+
+# Override the default actions with alternatives (store, mastodon, shell, drop)
+# and optional instances
 [ACTIONS]
-"example@mastodon.social" = "mastodon"
-
+facebook = "mastodon" # will post using the [MASTODON] config
+picasa = "store" # store into `$UPLOAD_FOLDER/$mangled_picasa_login`
+"masto@mydomain.com" = "mastodon" # will post using the [MASTODON] config
+"masto-public@mydomain.com" = "mastodon.pub" # will post using [MASTODON.pub]
+"store@mydomain.com" = "store.mailfolder" # will store into `$UPLOAD_FOLDER/mailfolder`
+"drop@mydomain.com" = "drop" # will not store/send
