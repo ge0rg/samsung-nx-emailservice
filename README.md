@@ -1,12 +1,17 @@
 # Flask-based Samsung NX Camera Upload Server
 
-This code emulates Samsung's NX email and social media upload service.
+This code is a re-creation of Samsung's Social Network Services (SNS), an API
+that allows to send emails and social media posts from WiFi-enabled Samsung
+cameras (including Samsung NX, WBxxxF, ...). As the hostnames are hardcoded in
+the cameras, DNS redirects are needed to deploy this re-implementation.
 
 You can:
 
  - send emails
  - post to mastodon
- - store to a directory on the server
+ - store to a directory on the server (and use [inotify](inotify.sh) for further processing)
+
+![Photo of a Samsung camera uploading an image through an LTE dongle](img/camera-modem.jpg)
 
 More information about the project can be found in:
 
@@ -33,22 +38,13 @@ details on the compacts):
 - ST1000: doesn't work, using unknown API
 - EX2F, ST200F, DV300F: **working**
 - WBxxxF: see [camera table](https://op-co.de/blog/posts/samsung_wifi_cameras/#index2h2)
-- NX mini (M7MU): **working, see below instructions**
+- NX mini (M7MU): **working**
 - NX1000 (DRIMeIII): **unknown**
 - NX30, NX300(M), NX310, NX2000 (DRIMeIV): **working on NX300**, should work on the other models
 - NX500, NX1 (DRIMeV): **working on NX500**, should work equally on NX1
 
-**NX mini weirdness**: when you try to send an email _before_ connecting to a
-WiFi network, it will fail or hang. Steps to successfully send an email:
-
-1. Share an image with Flickr or another social network
-2. Enter (fake) credentials
-3. Establish the WiFi connection
-4. On the browser tab showing "Samsung NX will never die!", tap the ⮌ back button
-5. Now you are connected to WiFi and you can send the email. Easy!
-
-This is probably a bug, but somebody needs to reverse-engineer the NX mini
-firmware to see why it fails.
+**NX mini issues**: this used to be unreliable before the NX mini hotspot detection was
+[fixed](https://github.com/ge0rg/samsung-nx-emailservice/commit/b475ee7e83ad4434e13f0b9579f09bc0a023cfcc).
 
 ## Supported sharing services
 
@@ -56,6 +52,12 @@ Tested on NX300, NX mini and NX500:
 - Email
 - Facebook
 - Picasa
+
+Not supported (services are using an OAuth authentication flow that is not
+reverse-engineered yet):
+- SkyDrive
+- Flickr
+- Dropbox
 
 ## Configuration
 
@@ -65,15 +67,14 @@ To send emails, you need to configure an SMTP (smarthost) account in
 `config.toml`. All photos sent from the camera's "Send email" function will be
 sent accordingly, unless you define a different _action_ for an address.
 
-The _action_ method is meant for cameras that only support email uploads and
-none of the other social networks, like the NX500. For email addresses, the
-supported _actions_ are:
+For email addresses, the supported _actions_ are:
 
 - `email` (default)
 - `store`
 - `mastodon`
+- `shell`
 
-See below for the action values.
+See below for an explanation of the action values.
 
 ### Social Media
 
@@ -84,24 +85,85 @@ _action_ can be defined:
 - `store` (default)
 - `mastodon`
 
-See below for the action values.
+See below for an explanation of the action values.
 
 ### Mastodon
+
+#### Using the login script
+
+After installation, run the login script with the Mastodon server domain as
+a parameter:
+
+    source ./venv/bin/activate
+    ./mastodonlogin.py https://photog.social
+
+The script will print the Authorization page URL of your Mastodon instance,
+which you need to open in the browser. It will ask for a write permission for
+posts and media, in order to submit new posts.
+
+After authorizing the app, you will see an "authorization code" that you need
+to paste back into the waiting `mastodonlogin` script.
+
+The script will create a file `mastodon.secret` containing the server domain,
+the client secret and your user token. Please ensure that `config.toml` contains
+a reference to the file in the `[MASTODON]` section as `TOKEN=mastodon.secret`
+(the `BASE_URL` can be either omitted, or it must match the domain in the
+secret file).
+
+You can create multiple secret files for different instances and use action
+instances to post on different accounts.
+
+#### Manual configuration (alternative)
 
 Go to Settings / Developer on your Mastodon instance, and create a new
 application. You only need to allow `write:statuses` and `write:media`.
 
 Please call it "samsung-nx-emailservice" and link to this repositroy.
 
-Once created, you can copy "your access token" into the `MASTODON_TOKEN`
-variable.
+Once created, you can copy "your access token" into the `TOKEN` variable and
+the server domain into `BASE_URL` in the `[MASTODON]` config section.
 
-### `email` Action
+## Mapping services to actions
+
+It is possible to override what happens with uploaded images, based on the
+service chosen in the camera or the recipient email address.
+
+Some cameras, like the NX500, only support sending emails. With the mapping
+mechanism it is possible to define custom email recipient addresses to
+instead post images to Mastodon or store them on the server.
+
+### Actions
+
+The _action_ method is meant to launch different actions based on which social
+network or recipient email address you select on the camera.
+
+You can define trigger email addresses like `mastodon@example.com` to make
+Mastodon posts from the "send email" menu on cameras that don't support social
+networks, like the NX500.
+
+You can also use "facebook" to store files on the servers and "picasa" to call
+an external script.
+
+Some _actions_ can also have _instances_, separated by a `"."`. Each instance
+corresponds to a dedicated configuration block. The instance configuration
+inherits the full default configuration!
+
+For example, `"masto@mydomain.com" = "mastodon"` will
+catch emails written to "masto@mydomain.com" and create a Mastodon post using
+the default _instance_ configured in `[MASTODON]`, whereas
+`"masto-public@mydomain.com" = "mastodon.pub"` will use the Mastodon
+_instance_ configured in `[MASTODON.pub]`.
+
+See below for the action values.
+
+#### `email` Action
 
 An email will be sent via the smarthost, using the camera-supplied From
 address, To address, Subject, and message body.
 
-### `store` Action
+Currently, no _instances_ are supported for `email`.
+
+#### `store` Action
 
 All uploaded files will be stored under a subdirectory of the `UPLOAD_FOLDER`.
 The subdirectory will be the HMAC-SHA256 hash of the username, protected by
@@ -110,7 +172,10 @@ The subdirectory will be the HMAC-SHA256 hash of the username, protected by
 The respective directory can be monitored using inotify to implement further
 processing (`inotifywait -q -e close_write -r $UPLOAD_FOLDER`).
 
-### `mastodon` Action
+If an _instance_ is specified, the instance name will override the destination
+folder name under `UPLOAD_FOLDER`.
+
+#### `mastodon` Action
 
 Files uploaded using this action will be converted into a Mastodon post.
 
@@ -133,7 +198,31 @@ Image 1: fancy flower bed
 
 Image 2: traffic sign
 
-### Action example
+An _instance_ specifies a dedicated configuration block that can override
+individual options.
+
+#### `shell` Action
+
+It is possible to call external commands as an action. By default, the `store`
+action will be executed first, creating the uploaded file(s) on disk.
+
+After that, the command specified as `CMD` will be executed in a *blocking*
+fashion, for *each* uploaded file individually.
+
+If the `STDIN` variable is defined, its content will be passed to the command's
+standard input.
+
+The config variables can use the following placeholders:
+ - `{sender}` - the sender email address (camera config)
+ - `{recipient}` - the recipient email address
+ - `{filename}` - the absolute path to the uploaded file
+ - `{subject}` - the email subject 
+ - `{body}` - the email body 
+
+An _instance_ specifies a dedicated configuration block that can override
+individual options.
+
+#### Action example
 
 To redirect all photos uploaded to "Facebook" or sent via email to
 "example@mastodon.social" to Mastodon, and to only store photos sent to
