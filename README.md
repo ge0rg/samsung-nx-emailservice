@@ -222,6 +222,10 @@ The config variables can use the following placeholders:
 An _instance_ specifies a dedicated configuration block that can override
 individual options.
 
+#### `drop` Action
+
+Ignore the respective email recipient / do nothing.
+
 #### Action example
 
 To redirect all photos uploaded to "Facebook" or sent via email to
